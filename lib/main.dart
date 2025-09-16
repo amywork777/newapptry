@@ -1,0 +1,392 @@
+import 'dart:async';
+import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as ble;
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:omi/backend/auth.dart';
+import 'package:omi/backend/preferences.dart';
+import 'package:omi/env/dev_env.dart';
+import 'package:omi/env/env.dart';
+import 'package:omi/env/prod_env.dart';
+import 'package:omi/firebase_options_dev.dart' as dev;
+import 'package:omi/firebase_options_prod.dart' as prod;
+import 'package:omi/flavors.dart';
+import 'package:omi/pages/apps/providers/add_app_provider.dart';
+import 'package:omi/pages/conversation_detail/conversation_detail_provider.dart';
+import 'package:omi/core/app_shell.dart';
+import 'package:omi/pages/persona/persona_provider.dart';
+import 'package:omi/providers/action_items_provider.dart';
+import 'package:omi/providers/app_provider.dart';
+import 'package:omi/providers/auth_provider.dart';
+import 'package:omi/providers/capture_provider.dart';
+import 'package:omi/providers/connectivity_provider.dart';
+import 'package:omi/providers/developer_mode_provider.dart';
+import 'package:omi/providers/mcp_provider.dart';
+import 'package:omi/providers/device_provider.dart';
+import 'package:omi/providers/memories_provider.dart';
+import 'package:omi/providers/people_provider.dart';
+import 'package:omi/providers/home_provider.dart';
+import 'package:omi/providers/conversation_provider.dart';
+import 'package:omi/providers/message_provider.dart';
+import 'package:omi/providers/onboarding_provider.dart';
+import 'package:omi/pages/payments/payment_method_provider.dart';
+import 'package:omi/providers/speech_profile_provider.dart';
+import 'package:omi/providers/sync_provider.dart';
+import 'package:omi/providers/usage_provider.dart';
+import 'package:omi/providers/user_provider.dart';
+import 'package:omi/services/notifications.dart';
+import 'package:omi/services/services.dart';
+import 'package:omi/utils/analytics/growthbook.dart';
+import 'package:omi/utils/logger.dart';
+import 'package:omi/utils/debug_log_manager.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:omi/utils/platform/platform_service.dart';
+import 'package:opus_dart/opus_dart.dart';
+import 'package:opus_flutter/opus_flutter.dart' as opus_flutter;
+import 'package:posthog_flutter/posthog_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:talker_flutter/talker_flutter.dart';
+import 'package:omi/utils/platform/platform_manager.dart';
+import 'package:omi/utils/debugging/crashlytics_manager.dart';
+import 'package:window_manager/window_manager.dart';
+
+Future<bool> _init() async {
+  // Service manager
+  ServiceManager.init();
+
+  // Restore Firebase initialization for authentication
+  if (PlatformService.isWindows) {
+    await Firebase.initializeApp(options: prod.DefaultFirebaseOptions.currentPlatform);
+  } else {
+    if (F.env == Environment.prod) {
+      await Firebase.initializeApp(options: prod.DefaultFirebaseOptions.currentPlatform);
+    } else {
+      await Firebase.initializeApp(options: dev.DefaultFirebaseOptions.currentPlatform);
+    }
+  }
+
+  await PlatformManager.initializeServices();
+  // Skip NotificationService - requires Firebase
+  // await NotificationService.instance.initialize();
+  await SharedPreferencesUtil.init();
+
+  // TODO: thinh, move to app start
+  await ServiceManager.instance().start();
+
+  // Restore authentication check
+  bool isAuth = (await getIdToken()) != null;
+  if (isAuth) PlatformManager.instance.mixpanel.identify();
+  if (PlatformService.isMobile) initOpus(await opus_flutter.load());
+
+  await GrowthbookUtil.init();
+  if (!PlatformService.isWindows) {
+    ble.FlutterBluePlus.setLogLevel(ble.LogLevel.info, color: true);
+  }
+  return isAuth;
+}
+
+Future<void> initPostHog() async {
+  final config = PostHogConfig(Env.posthogApiKey!);
+  config.debug = true;
+  config.captureApplicationLifecycleEvents = true;
+  config.host = 'https://us.i.posthog.com';
+  await Posthog().setup(config);
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (PlatformService.isDesktop) {
+    await windowManager.ensureInitialized();
+    windowManager.waitUntilReadyToShow().then((_) async {
+      await windowManager.setAsFrameless();
+      // Enforce a minimum window size so the desktop layout doesn't collapse into the mobile view
+      // Width chosen slightly above the small-screen breakpoint (1000px) used in ResponsiveHelper.
+      // Height is set to a sensible value to keep vertical content usable.
+      await windowManager.setMinimumSize(const Size(1100, 600));
+      await windowManager.setSize(const Size(1100, 700));
+    });
+  }
+
+  if (PlatformService.isWindows) {
+    // Windows does not support flavors`
+    Env.init(ProdEnv());
+  } else {
+    if (F.env == Environment.prod) {
+      Env.init(ProdEnv());
+    } else {
+      Env.init(DevEnv());
+    }
+  }
+
+  FlutterForegroundTask.initCommunicationPort();
+  if (Env.posthogApiKey != null && !PlatformService.isDesktop) {
+    await initPostHog();
+  }
+  // _setupAudioSession();
+
+  bool isAuth = await _init();
+  // Skip Crashlytics - requires Firebase
+  // await CrashlyticsManager.init();
+  // if (isAuth) {
+  //   PlatformManager.instance.crashReporter.identifyUser(
+  //     FirebaseAuth.instance.currentUser?.email ?? '',
+  //     SharedPreferencesUtil().fullName,
+  //     SharedPreferencesUtil().uid,
+  //   );
+  // }
+  // FlutterError.onError = (FlutterErrorDetails details) {
+  //   FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  // };
+
+  // PlatformDispatcher.instance.onError = (error, stack) {
+  //   FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  //   return true;
+  // };
+
+  // Skip Firebase error reporting
+  runApp(const MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+
+  static _MyAppState of(BuildContext context) => context.findAncestorStateOfType<_MyAppState>()!;
+
+  // The navigator key is necessary to navigate using static methods
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    NotificationUtil.initializeNotificationsEventListeners();
+    NotificationUtil.initializeIsolateReceivePort();
+    WidgetsBinding.instance.addObserver(this);
+    if (SharedPreferencesUtil().devLogsToFileEnabled) {
+      DebugLogManager.setEnabled(true);
+    }
+    super.initState();
+  }
+
+  void _deinit() {
+    debugPrint("App > _deinit");
+    ServiceManager.instance().deinit();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.detached) {
+      _deinit();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+        providers: [
+          ListenableProvider(create: (context) => ConnectivityProvider()),
+          ChangeNotifierProvider(create: (context) => AuthenticationProvider()),
+          ChangeNotifierProvider(create: (context) => ConversationProvider()),
+          ListenableProvider(create: (context) => AppProvider()),
+          ChangeNotifierProvider(create: (context) => PeopleProvider()),
+          ChangeNotifierProvider(create: (context) => UsageProvider()),
+          ListenableProvider(create: (context) => AppProvider()),
+          ChangeNotifierProxyProvider<AppProvider, MessageProvider>(
+            create: (context) => MessageProvider(),
+            update: (BuildContext context, value, MessageProvider? previous) =>
+                (previous?..updateAppProvider(value)) ?? MessageProvider(),
+          ),
+          ChangeNotifierProxyProvider4<ConversationProvider, MessageProvider, PeopleProvider, UsageProvider,
+              CaptureProvider>(
+            create: (context) => CaptureProvider(),
+            update: (BuildContext context, conversation, message, people, usage, CaptureProvider? previous) =>
+                (previous?..updateProviderInstances(conversation, message, people, usage)) ?? CaptureProvider(),
+          ),
+          ChangeNotifierProxyProvider<CaptureProvider, DeviceProvider>(
+            create: (context) => DeviceProvider(),
+            update: (BuildContext context, captureProvider, DeviceProvider? previous) =>
+                (previous?..setProviders(captureProvider)) ?? DeviceProvider(),
+          ),
+          ChangeNotifierProxyProvider<DeviceProvider, OnboardingProvider>(
+            create: (context) => OnboardingProvider(),
+            update: (BuildContext context, value, OnboardingProvider? previous) =>
+                (previous?..setDeviceProvider(value)) ?? OnboardingProvider(),
+          ),
+          ListenableProvider(create: (context) => HomeProvider()),
+          ChangeNotifierProxyProvider<DeviceProvider, SpeechProfileProvider>(
+            create: (context) => SpeechProfileProvider(),
+            update: (BuildContext context, device, SpeechProfileProvider? previous) =>
+                (previous?..setProviders(device)) ?? SpeechProfileProvider(),
+          ),
+          ChangeNotifierProxyProvider2<AppProvider, ConversationProvider, ConversationDetailProvider>(
+            create: (context) => ConversationDetailProvider(),
+            update: (BuildContext context, app, conversation, ConversationDetailProvider? previous) =>
+                (previous?..setProviders(app, conversation)) ?? ConversationDetailProvider(),
+          ),
+          ChangeNotifierProvider(create: (context) => DeveloperModeProvider()),
+          ChangeNotifierProvider(create: (context) => McpProvider()),
+          ChangeNotifierProxyProvider<AppProvider, AddAppProvider>(
+            create: (context) => AddAppProvider(),
+            update: (BuildContext context, value, AddAppProvider? previous) =>
+                (previous?..setAppProvider(value)) ?? AddAppProvider(),
+          ),
+          ChangeNotifierProvider(create: (context) => PaymentMethodProvider()),
+          ChangeNotifierProvider(create: (context) => PersonaProvider()),
+          ChangeNotifierProvider(create: (context) => MemoriesProvider()),
+          ChangeNotifierProvider(create: (context) => UserProvider()),
+          ChangeNotifierProvider(create: (context) => UsageProvider()),
+          ChangeNotifierProvider(create: (context) => ActionItemsProvider()),
+          ChangeNotifierProvider(create: (context) => SyncProvider()),
+        ],
+        builder: (context, child) {
+          return WithForegroundTask(
+            child: MaterialApp(
+              navigatorObservers: [
+                if (Env.posthogApiKey != null) PosthogObserver(),
+              ],
+              debugShowCheckedModeBanner: false,
+              title: F.title,
+              navigatorKey: MyApp.navigatorKey,
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const [Locale('en')],
+              theme: ThemeData(
+                  useMaterial3: false,
+                  colorScheme: const ColorScheme.dark(
+                    primary: Colors.black,
+                    secondary: Colors.teal,
+                    surface: Colors.black38,
+                  ),
+                  snackBarTheme: const SnackBarThemeData(
+                    backgroundColor: Color(0xFF1F1F25),
+                    contentTextStyle: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w500, fontFamily: 'General Sans'),
+                  ),
+                  fontFamily: 'General Sans',
+                  textTheme: TextTheme(
+                    titleLarge: const TextStyle(fontSize: 18, color: Colors.white, fontFamily: 'General Sans'),
+                    titleMedium: const TextStyle(fontSize: 16, color: Colors.white, fontFamily: 'General Sans'),
+                    bodyMedium: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'General Sans'),
+                    labelMedium: TextStyle(fontSize: 12, color: Colors.grey.shade200, fontFamily: 'General Sans'),
+                  ),
+                  textSelectionTheme: const TextSelectionThemeData(
+                    cursorColor: Colors.white,
+                    selectionColor: Colors.teal,
+                    selectionHandleColor: Colors.white,
+                  ),
+                  cupertinoOverrideTheme: const CupertinoThemeData(
+                    primaryColor: Colors.white, // Controls the selection handles on iOS
+                  )),
+              themeMode: ThemeMode.dark,
+              builder: (context, child) {
+                FlutterError.onError = (FlutterErrorDetails details) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Logger.instance.talker.handle(details.exception, details.stack);
+                    DebugLogManager.logError(details.exception, details.stack, 'FlutterError');
+                  });
+                };
+                ErrorWidget.builder = (errorDetails) {
+                  return CustomErrorWidget(errorMessage: errorDetails.exceptionAsString());
+                };
+                return child!;
+              },
+              home: TalkerWrapper(
+                talker: Logger.instance.talker,
+                options: TalkerWrapperOptions(
+                  enableErrorAlerts: true,
+                  enableExceptionAlerts: true,
+                  errorAlertBuilder: (context, data) {
+                    return LoggerSnackbar(error: data);
+                  },
+                  exceptionAlertBuilder: (context, data) {
+                    return LoggerSnackbar(exception: data);
+                  },
+                ),
+                child: const AppShell(), // AppShell handles auth flow properly
+              ),
+            ),
+          );
+        });
+  }
+}
+
+class CustomErrorWidget extends StatelessWidget {
+  final String errorMessage;
+
+  const CustomErrorWidget({super.key, required this.errorMessage});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 50.0,
+            ),
+            const SizedBox(height: 10.0),
+            const Text(
+              'Something went wrong! Please try again later.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10.0),
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.all(16),
+              height: 200,
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 63, 63, 63),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                errorMessage,
+                textAlign: TextAlign.start,
+                style: const TextStyle(fontSize: 16.0),
+              ),
+            ),
+            const SizedBox(height: 10.0),
+            SizedBox(
+              width: 210,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: errorMessage));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Error message copied to clipboard'),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text('Copy error message'),
+                    SizedBox(width: 10),
+                    Icon(Icons.copy_rounded),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
