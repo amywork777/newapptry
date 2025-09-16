@@ -206,7 +206,7 @@ class _PrimaryLanguageWidgetState extends State<PrimaryLanguageWidget> {
   @override
   void initState() {
     super.initState();
-    // Initialize with the user's saved primary language if available
+    // Initialize with the user's saved primary language if available, otherwise auto-select English
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final savedLanguage = SharedPreferencesUtil().userPrimaryLanguage;
       if (savedLanguage.isNotEmpty) {
@@ -221,6 +221,12 @@ class _PrimaryLanguageWidgetState extends State<PrimaryLanguageWidget> {
             // If language not found in the map, just use the code
             selectedLanguageName = savedLanguage;
           }
+        });
+      } else {
+        // Auto-select English by default
+        setState(() {
+          selectedLanguage = 'en';
+          selectedLanguageName = 'English';
         });
       }
     });
