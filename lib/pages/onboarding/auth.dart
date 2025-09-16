@@ -177,6 +177,35 @@ class _AuthComponentState extends State<AuthComponent> {
                       ),
                     ),
 
+                    const SizedBox(height: 16),
+
+                    // Skip Authentication Button for Testing
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: TextButton(
+                        onPressed: () {
+                          // Skip authentication for testing
+                          widget.onSignIn();
+                        },
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          ),
+                        ),
+                        child: const Text(
+                          'Skip Authentication (For Testing)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Privacy policy text (same as welcome page)

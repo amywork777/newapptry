@@ -223,13 +223,27 @@ class _PrimaryLanguageWidgetState extends State<PrimaryLanguageWidget> {
           }
         });
       } else {
-        // Auto-select English by default
+        // Auto-select English by default and immediately save it
         setState(() {
           selectedLanguage = 'en';
           selectedLanguageName = 'English';
         });
+        // Immediately update and proceed to next step
+        _autoSelectEnglishAndContinue();
       }
     });
+  }
+
+  Future<void> _autoSelectEnglishAndContinue() async {
+    // Small delay to ensure UI is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Update the user's primary language
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+    await homeProvider.updateUserPrimaryLanguage('en');
+
+    // Automatically continue to next step
+    widget.goNext();
   }
 
   void _showLanguageSelector(BuildContext context, Map<String, String> availableLanguages) {

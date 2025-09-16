@@ -211,7 +211,9 @@ class _OnboardingWrapperState extends State<OnboardingWrapper> with TickerProvid
         },
       ),
       NameWidget(goNext: () {
-        _goNext(); // Go to Primary Language page
+        // Skip directly to permissions page (index 3) - removing language selection entirely
+        _controller!.animateTo(kPermissionsPage);
+
         IntercomManager.instance.updateUser(
           FirebaseAuth.instance.currentUser!.email,
           FirebaseAuth.instance.currentUser!.displayName,
@@ -219,10 +221,8 @@ class _OnboardingWrapperState extends State<OnboardingWrapper> with TickerProvid
         );
         MixpanelManager().onboardingStepCompleted('Name');
       }),
-      PrimaryLanguageWidget(goNext: () {
-        _goNext(); // Go to Permissions page
-        MixpanelManager().onboardingStepCompleted('Primary Language');
-      }),
+      // PrimaryLanguageWidget removed - skip language selection entirely
+      Container(), // Placeholder to maintain index structure
       PlatformService.isDesktop
           ? PermissionsDesktopWidget(
               goNext: () {

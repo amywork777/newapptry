@@ -143,9 +143,8 @@ class HomeProvider extends ChangeNotifier {
   }
 
   void showLanguageDialogIfNeeded(BuildContext context) {
-    if (!hasSetPrimaryLanguage) {
-      LanguageSelectionDialog.show(context, isRequired: true);
-    }
+    // Primary language functionality completely removed - no action needed
+    return;
   }
 
   Future<bool> updateUserPrimaryLanguage(String languageCode) async {
