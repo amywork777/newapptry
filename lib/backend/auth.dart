@@ -31,7 +31,8 @@ String sha256ofString(String input) {
 }
 
 final String _googleClientId = Env.googleClientId!;
-final String _googleClientSecret = Env.googleClientSecret!;
+final String? _googleClientSecret = Env.googleClientSecret?.isNotEmpty == true &&
+    !Env.googleClientSecret!.contains('placeholder') ? Env.googleClientSecret : null;
 
 // Method channel for native platform calls
 const MethodChannel _screenCaptureChannel = MethodChannel('screenCapturePlatform');
@@ -211,7 +212,7 @@ Future<UserCredential?> _signInWithGoogleAllPlatforms() async {
   debugPrint('Using Google Sign In All Platforms');
 
   if (_googleClientId.isEmpty) {
-    Logger.error('Google Client ID not configured. Please configure _googleClientId and _googleClientSecret');
+    Logger.error('Google Client ID not configured. Please configure _googleClientId');
     return null;
   }
 
@@ -527,7 +528,7 @@ Future<UserCredential?> _linkWithGoogleAllPlatforms() async {
   debugPrint('Using Google Sign In All Platforms for linking');
 
   if (_googleClientId.isEmpty) {
-    Logger.error('Google Client ID not configured. Please configure _googleClientId and _googleClientSecret');
+    Logger.error('Google Client ID not configured. Please configure _googleClientId');
     return null;
   }
 
