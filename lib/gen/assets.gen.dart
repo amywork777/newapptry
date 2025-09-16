@@ -22,6 +22,18 @@ class $AssetsDeviceAssetsGen {
 class $AssetsFontsGen {
   const $AssetsFontsGen();
 
+  /// File path: assets/fonts/GeneralSans-Bold.otf
+  String get generalSansBold => 'assets/fonts/GeneralSans-Bold.otf';
+
+  /// File path: assets/fonts/GeneralSans-Medium.otf
+  String get generalSansMediumOtf => 'assets/fonts/GeneralSans-Medium.otf';
+
+  /// File path: assets/fonts/GeneralSans-Medium.ttf
+  String get generalSansMediumTtf => 'assets/fonts/GeneralSans-Medium.ttf';
+
+  /// File path: assets/fonts/GeneralSans-Regular.otf
+  String get generalSansRegular => 'assets/fonts/GeneralSans-Regular.otf';
+
   /// File path: assets/fonts/SFPRODISPLAYBLACKITALIC.OTF
   String get sfprodisplayblackitalic =>
       'assets/fonts/SFPRODISPLAYBLACKITALIC.OTF';
@@ -53,6 +65,10 @@ class $AssetsFontsGen {
 
   /// List of all assets
   List<String> get values => [
+    generalSansBold,
+    generalSansMediumOtf,
+    generalSansMediumTtf,
+    generalSansRegular,
     sfprodisplayblackitalic,
     sfprodisplaybold,
     sfprodisplayheavyitalic,
