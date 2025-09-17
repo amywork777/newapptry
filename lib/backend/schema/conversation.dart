@@ -155,8 +155,12 @@ class ServerConversation {
   factory ServerConversation.fromJson(Map<String, dynamic> json) {
     return ServerConversation(
       id: json['id'],
-      createdAt: DateTime.parse(json['created_at']).toLocal(),
-      structured: Structured.fromJson(json['structured']),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at']).toLocal()
+          : DateTime.now(), // Fallback to current time
+      structured: json['structured'] != null
+          ? Structured.fromJson(json['structured'])
+          : Structured.fromBackwardsCompatible(json), // Create from root-level fields
       startedAt: json['started_at'] != null ? DateTime.parse(json['started_at']).toLocal() : null,
       finishedAt: json['finished_at'] != null ? DateTime.parse(json['finished_at']).toLocal() : null,
       transcriptSegments: ((json['transcript_segments'] ?? []) as List<dynamic>)

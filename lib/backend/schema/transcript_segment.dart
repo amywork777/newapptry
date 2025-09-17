@@ -53,7 +53,22 @@ class TranscriptSegment {
     required this.translations,
     this.speechProfileProcessed = true,
   }) {
-    speakerId = speaker != null ? int.parse(speaker!.split('_')[1]) : 0;
+    // Safe parsing of speaker ID with fallback
+    if (speaker != null) {
+      try {
+        var parts = speaker!.split('_');
+        if (parts.length > 1) {
+          speakerId = int.parse(parts[1]);
+        } else {
+          // Handle case where speaker doesn't contain underscore
+          speakerId = 0;
+        }
+      } catch (e) {
+        speakerId = 0;
+      }
+    } else {
+      speakerId = 0;
+    }
   }
 
   @override

@@ -61,6 +61,31 @@ class Structured {
     return structured;
   }
 
+  /// Creates a Structured object from backwards-compatible root-level fields
+  /// when the backend doesn't have nested 'structured' object yet
+  static Structured fromBackwardsCompatible(Map<String, dynamic> json) {
+    var structured = Structured(
+      json['title'] ?? 'Untitled',
+      json['overview'] ?? '',
+      emoji: json['emoji'] ?? '🧠',
+      category: json['category'] ?? 'other',
+    );
+
+    var aItems = json['action_items'];
+    if (aItems != null) {
+      for (dynamic item in aItems) {
+        if (item.runtimeType == String) {
+          if (item.isEmpty) continue;
+          structured.actionItems.add(ActionItem(item));
+        } else {
+          structured.actionItems.add(ActionItem.fromJson(item));
+        }
+      }
+    }
+
+    return structured;
+  }
+
   @override
   String toString() {
     var str = '';

@@ -36,14 +36,16 @@ class Memory {
   factory Memory.fromJson(Map<String, dynamic> json) {
     return Memory(
       id: json['id'],
-      uid: json['uid'],
-      content: json['content'],
+      uid: json['uid'] ?? 'default-user', // Fallback for current backend format
+      content: json['content'] ?? json['overview'] ?? '', // Handle both content and overview fields
       category: MemoryCategory.values.firstWhere(
         (e) => e.toString().split('.').last == json['category'],
         orElse: () => MemoryCategory.interesting,
       ),
       createdAt: DateTime.parse(json['created_at']).toLocal(),
-      updatedAt: DateTime.parse(json['updated_at']).toLocal(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at']).toLocal()
+          : DateTime.parse(json['created_at']).toLocal(), // Fallback to created_at if updated_at is missing
       conversationId: json['conversation_id'],
       reviewed: json['reviewed'] ?? false,
       userReview: json['user_review'],
