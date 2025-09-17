@@ -43,41 +43,41 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCz33hNRKsSsWT_Kaxi5Q_9uB7EWGn3Dq0',
-    appId: '1:1031333818730:android:de181b5b4681b7a1afb513',
-    messagingSenderId: '1031333818730',
-    projectId: 'based-hardware-dev',
-    storageBucket: 'based-hardware-dev.firebasestorage.app',
+    apiKey: 'AIzaSyBexample-your-android-api-key',
+    appId: '1:359427579558:android:example-app-id',
+    messagingSenderId: '359427579558',
+    projectId: 'taya-backend-b8316',
+    storageBucket: 'taya-backend-b8316.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBK-G7KmEoC72mR10gmQyb2NFBbZyDvcqM',
-    appId: '1:1031333818730:ios:3bea63d8e4f41dbfafb513',
-    messagingSenderId: '1031333818730',
-    projectId: 'based-hardware-dev',
-    storageBucket: 'based-hardware-dev.firebasestorage.app',
-    androidClientId: '1031333818730-1cgqp3jc5p8n2rk467pl4t56qc4lnnbr.apps.googleusercontent.com',
-    iosClientId: '1031333818730-dusn243nct6i5rgfpfkj5mchuj1qnmde.apps.googleusercontent.com',
-    iosBundleId: 'com.friend-app-with-wearable.ios12.development',
+    apiKey: 'AIzaSyBexample-your-ios-api-key',
+    appId: '1:359427579558:ios:example-ios-app-id',
+    messagingSenderId: '359427579558',
+    projectId: 'taya-backend-b8316',
+    storageBucket: 'taya-backend-b8316.firebasestorage.app',
+    androidClientId: '359427579558-example-android-client.apps.googleusercontent.com',
+    iosClientId: '359427579558-ohcrhfuq1t9iiqrt8p2p4mfljbao1oqp.apps.googleusercontent.com',
+    iosBundleId: 'com.tayaapp.yourapp.dev',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyC1U6S-hp8x_utpVDHtZwwBDxobhzRZI1w',
-    appId: '1:1031333818730:web:e1b83d713c04245cafb513',
-    messagingSenderId: '1031333818730',
-    projectId: 'based-hardware-dev',
-    authDomain: 'based-hardware-dev.firebaseapp.com',
-    storageBucket: 'based-hardware-dev.firebasestorage.app',
+    apiKey: 'AIzaSyBexample-your-web-api-key',
+    appId: '1:359427579558:web:example-web-app-id',
+    messagingSenderId: '359427579558',
+    projectId: 'taya-backend-b8316',
+    authDomain: 'taya-backend-b8316.firebaseapp.com',
+    storageBucket: 'taya-backend-b8316.firebasestorage.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBK-G7KmEoC72mR10gmQyb2NFBbZyDvcqM',
-    appId: '1:1031333818730:ios:3bea63d8e4f41dbfafb513',
-    messagingSenderId: '1031333818730',
-    projectId: 'based-hardware-dev',
-    storageBucket: 'based-hardware-dev.firebasestorage.app',
-    androidClientId: '1031333818730-1cgqp3jc5p8n2rk467pl4t56qc4lnnbr.apps.googleusercontent.com',
-    iosClientId: '1031333818730-dusn243nct6i5rgfpfkj5mchuj1qnmde.apps.googleusercontent.com',
-    iosBundleId: 'com.friend-app-with-wearable.ios12.development',
+    apiKey: 'AIzaSyBexample-your-macos-api-key',
+    appId: '1:359427579558:ios:example-macos-app-id',
+    messagingSenderId: '359427579558',
+    projectId: 'taya-backend-b8316',
+    storageBucket: 'taya-backend-b8316.firebasestorage.app',
+    androidClientId: '359427579558-example-android-client.apps.googleusercontent.com',
+    iosClientId: '359427579558-ohcrhfuq1t9iiqrt8p2p4mfljbao1oqp.apps.googleusercontent.com',
+    iosBundleId: 'com.tayaapp.yourapp.dev',
   );
 }

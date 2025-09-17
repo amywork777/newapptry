@@ -59,20 +59,29 @@ Future<bool> _init() async {
   // Service manager
   ServiceManager.init();
 
-  // Restore Firebase initialization for authentication
-  if (PlatformService.isWindows) {
-    await Firebase.initializeApp(options: prod.DefaultFirebaseOptions.currentPlatform);
-  } else {
-    if (F.env == Environment.prod) {
+  // Initialize Firebase only if not already initialized
+  try {
+    if (PlatformService.isWindows) {
       await Firebase.initializeApp(options: prod.DefaultFirebaseOptions.currentPlatform);
     } else {
-      await Firebase.initializeApp(options: dev.DefaultFirebaseOptions.currentPlatform);
+      if (F.env == Environment.prod) {
+        await Firebase.initializeApp(options: prod.DefaultFirebaseOptions.currentPlatform);
+      } else {
+        await Firebase.initializeApp(options: dev.DefaultFirebaseOptions.currentPlatform);
+      }
+    }
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      // Firebase already initialized, continue
+      print('Firebase already initialized, continuing...');
+    } else {
+      // Re-throw other errors
+      rethrow;
     }
   }
 
   await PlatformManager.initializeServices();
-  // Skip NotificationService - requires Firebase
-  // await NotificationService.instance.initialize();
+  await NotificationService.instance.initialize();
   await SharedPreferencesUtil.init();
 
   // TODO: thinh, move to app start
@@ -131,25 +140,22 @@ void main() async {
   // _setupAudioSession();
 
   bool isAuth = await _init();
-  // Skip Crashlytics - requires Firebase
-  // await CrashlyticsManager.init();
-  // if (isAuth) {
-  //   PlatformManager.instance.crashReporter.identifyUser(
-  //     FirebaseAuth.instance.currentUser?.email ?? '',
-  //     SharedPreferencesUtil().fullName,
-  //     SharedPreferencesUtil().uid,
-  //   );
-  // }
-  // FlutterError.onError = (FlutterErrorDetails details) {
-  //   FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-  // };
+  await CrashlyticsManager.init();
+  if (isAuth) {
+    PlatformManager.instance.crashReporter.identifyUser(
+      FirebaseAuth.instance.currentUser?.email ?? '',
+      SharedPreferencesUtil().fullName,
+      SharedPreferencesUtil().uid,
+    );
+  }
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  };
 
-  // PlatformDispatcher.instance.onError = (error, stack) {
-  //   FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  //   return true;
-  // };
-
-  // Skip Firebase error reporting
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
   runApp(const MyApp());
 }
 

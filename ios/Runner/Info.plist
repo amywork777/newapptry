@@ -48,7 +48,7 @@
 			<string>h.omi.me</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>$(GOOGLE_REVERSE_CLIENT_ID)</string>
+				<string>com.googleusercontent.apps.644453067905-iomdd9m06ttaqcrhmmq6pf7b2jcbed56</string>
 			</array>
 		</dict>
 	</array>
